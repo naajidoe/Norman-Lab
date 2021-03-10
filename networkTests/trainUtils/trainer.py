@@ -1,5 +1,7 @@
+import numpy as np
+
 # trains network
-def train_network(network, dataset, targets, sequence_length, input_size, batch_size, epochs, optimizer, criterion, sheduler):     
+def train_network(network, dataset, targets, sequence_length, input_size, batch_size, epochs, optimizer, criterion, sheduler, verbose=True):     
     mean_losses = []
     for epoch in range(epochs):
         losses = []
@@ -21,8 +23,9 @@ def train_network(network, dataset, targets, sequence_length, input_size, batch_
 
         mean_loss = sum(losses) / len(losses)  # calculates mean loss for epoch
         mean_losses.append(mean_loss)
-        # sheduler.step(mean_loss)
-        if epoch in [0, epochs/4, epochs/2, 3*epochs/4, epochs-1]:
-          print(f'Cost at epoch {epoch} is {mean_loss}')
+        if verbose:
+            # sheduler.step(mean_loss)
+            if epoch in [0, epochs/4, epochs/2, 3*epochs/4, epochs-1]:
+              print(f'Cost at epoch {epoch} is {mean_loss}')
 
-    return mean_losses
+    return np.array(mean_losses)
