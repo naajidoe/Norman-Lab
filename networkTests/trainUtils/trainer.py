@@ -1,10 +1,15 @@
 import numpy as np
+from taskUtils import generate as gen
 
 # trains network
-def train_network(network, dataset, targets, sequence_length, input_size, batch_size, epochs, optimizer, criterion, sheduler, verbose=True):     
+def train_network(network, dataset, targets, sequence_length, input_size, batch_size, epochs, optimizer, criterion, sheduler, generate_new=False, same_distractions=False, condition=None, verbose=True):     
     mean_losses = []
     for epoch in range(epochs):
         losses = []
+        
+        if generate_new and condition is not None:
+            seqlen1, seqlen2, seqlen3 = condition[0], condition[1], condition[2]
+            dataset, targets, sequence_length = gen.generate_dataset(same_distractions, input_size, seqlen1, seqlen2, seqlen3)
 
         for sample, target in zip(dataset, targets):
             optimizer.zero_grad() 
