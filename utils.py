@@ -27,6 +27,7 @@ class XORNet(nn.Module):
         x = self.hidden_layer(x)  # then, x passes through the hidden layer to output layer
         return x
     
+
 # recurrent XOR-suited NN
 class RecurrentXORNet(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers,
@@ -51,6 +52,31 @@ class RecurrentXORNet(nn.Module):
         out = self.fc(out)  # passes last RNN layer to fc output layer
         return out
     
+# recurrent XOR-suited NN
+class GRUXORNet(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers,
+                 num_classes, batch_size, random_h0=False):  # define fc/reccurent layers
+        super().__init__()  # initializes superclass (nn.Module)
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_classes = num_classes
+        self.num_layers = num_layers
+        self.batch_size = batch_size
+        self.random_h0 = random_h0
+        self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)  # fc output lyaer
+        # input must have the sahpe: batch_size, sequence_length, input_size
+
+    def forward(self, x): 
+        h0 = torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(device)
+        if self.random_h0==True:
+            h0 = torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(device)
+        out, _ = self.gru(x, h0)  # first, x passes through the recurrent layer
+        out = out[:, -1, :]  # only last layer of the RNN
+        out = self.fc(out)  # passes last RNN layer to fc output layer
+        return out
+    
+
 # LSTM XOR-suited NN
 class LSTMXORNet(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers,
@@ -80,6 +106,7 @@ class LSTMXORNet(nn.Module):
         return out
     
 
+    
 #### TASK RELATED FUNCTIONS ####
 
 
@@ -130,14 +157,28 @@ matricies made with the generate_sample function. This dataset will contain
 the equivalent of matricies corresponding to the [0, 0, 0], [0, 1, 1], 
 [1, 1, 0], and [1, 0, 1] examples of the XOR problem in that order
 """
-def generate_dataset(same_distractions, input_size, seqlen1, seqlen2, seqlen3):
+def generate_dataset(same_distractions, input_size, seqlen1, seqlen2, seqlen3, random=False):
     sequence_length = 2 + seqlen1 + seqlen2 + seqlen3
     dataset = torch.zeros(4, sequence_length, input_size)
-    dataset[0], YA = generate_sample(0, input_size, seqlen1, seqlen2, seqlen3)
-    dataset[1], YB = generate_sample(1, input_size, seqlen1, seqlen2, seqlen3)
-    dataset[2], YA = generate_sample(2, input_size, seqlen1, seqlen2, seqlen3)
-    dataset[3], YB = generate_sample(3, input_size, seqlen1, seqlen2, seqlen3)
 
+    if random:
+        sample_1 = generate_sample(0, input_size, seqlen1, seqlen2, seqlen3)
+        sample_2 = generate_sample(1, input_size, seqlen1, seqlen2, seqlen3)
+        sample_3 = generate_sample(2, input_size, seqlen1, seqlen2, seqlen3)
+        sample_4 = generate_sample(3, input_size, seqlen1, seqlen2, seqlen3)
+        sample_set = [sample_1, sample_2, sample_3, sample_4]
+        np.random.shuffle(sample_set)
+        dataset[0], Y0 = sample_set[0]
+        dataset[1], Y1 = sample_set[1]
+        dataset[2], Y2 = sample_set[2]
+        dataset[3], Y3 = sample_set[3]
+    
+    if not random:
+        dataset[0], Y0 = generate_sample(0, input_size, seqlen1, seqlen2, seqlen3)
+        dataset[1], Y1 = generate_sample(1, input_size, seqlen1, seqlen2, seqlen3)
+        dataset[2], Y2 = generate_sample(2, input_size, seqlen1, seqlen2, seqlen3)
+        dataset[3], Y3 = generate_sample(3, input_size, seqlen1, seqlen2, seqlen3)
+    
     # when true sets all dataset samples to the have same distraction vectors
     if same_distractions:
         for i in range(sequence_length):
@@ -146,7 +187,7 @@ def generate_dataset(same_distractions, input_size, seqlen1, seqlen2, seqlen3):
                 dataset[2][i] = dataset[0][i]
                 dataset[3][i] = dataset[0][i]
 
-    targets = torch.tensor([YA, YB, YA, YB])
+    targets = torch.tensor([Y0, Y1, Y2, Y3])
     return dataset, targets, sequence_length
 
 
@@ -154,14 +195,14 @@ def generate_dataset(same_distractions, input_size, seqlen1, seqlen2, seqlen3):
 
 
 # trains network
-def train_network(network, dataset, targets, sequence_length, input_size, batch_size, epochs, optimizer, criterion, sheduler, generate_new=False, same_distractions=False, condition=None, verbose=True):     
+def train_network(network, dataset, targets, sequence_length, input_size, batch_size, epochs, optimizer, criterion, sheduler, generate_new=False, generate_random=False, same_distractions=False, condition=None, verbose=True):     
     mean_losses = []
     for epoch in range(epochs):
         losses = []
         
         if generate_new and condition is not None:
             seqlen1, seqlen2, seqlen3 = condition[0], condition[1], condition[2]
-            dataset, targets, sequence_length = generate_dataset(same_distractions, input_size, seqlen1, seqlen2, seqlen3)
+            dataset, targets, sequence_length = generate_dataset(same_distractions, input_size, seqlen1, seqlen2, seqlen3, random=generate_random)
 
         for sample, target in zip(dataset, targets):
             optimizer.zero_grad() 
